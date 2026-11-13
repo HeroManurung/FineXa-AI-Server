@@ -27,12 +27,10 @@ penerjemah_jawaban = {
 def predict_risk():
     try:
         data = request.json
-        answers = data.get('answers')
+        answers = data.get('answers')  # Menerima array angka: [3, 3, 3, 2, 3]
         
-        angka_jawaban = []
-        for jawab in answers:
-            angka = penerjemah_jawaban.get(jawab, 1) 
-            angka_jawaban.append(angka)
+        # Langsung ambil angkanya dari array tanpa perlu diterjemahkan lewat teks
+        angka_jawaban = [int(x) for x in answers]
         
         data_dict = {
             'skor_pengetahuan': angka_jawaban[0],
@@ -41,12 +39,19 @@ def predict_risk():
             'skor_risiko': angka_jawaban[3],
             'skor_waktu': angka_jawaban[4]
         }
+        
         df_input = pd.DataFrame([data_dict])
         df_input = df_input[model_ml.feature_names_in_]
         
+        # Biarkan model ML `.pkl` yang sudah kita latih bekerja secara murni!
         hasil_prediksi = model_ml.predict(df_input)
         
+        print(f"Input Skor: {angka_jawaban} -> Hasil Prediksi ML: {hasil_prediksi[0]}")
         return jsonify({"risk_profile": hasil_prediksi[0]})
+        
+    except Exception as e:
+        print("Error ML:", e)
+        return jsonify({"risk_profile": "Moderat", "error": str(e)})
         
     except Exception as e:
         print("Error ML:", e)
@@ -54,6 +59,7 @@ def predict_risk():
 
 @app.route('/generate-advice', methods=['POST'])
 def generate_advice():
+    print("Menerima request LLM dari Express...")
     data = request.json
     risk_profile = data.get('risk_profile')
     
@@ -85,14 +91,15 @@ def generate_advice():
     
     try:
         respons_gemini = client.models.generate_content(
-            model='gemini-3.8-flash',
+            model='gemini-3.5-flash',
             contents=perintah_untuk_gemini
         )
         teks_jawaban = respons_gemini.text
         
         teks_bersih = teks_jawaban.replace('```json', '').replace('```', '').strip()
         hasil_akhir = json.loads(teks_bersih)
-        
+
+        print("Saran investasi selesai diracik!")
         return jsonify(hasil_akhir)
         
     except Exception as e:
