@@ -23,13 +23,16 @@ penerjemah_jawaban = {
     "< 1 tahun": 1, "1-3 tahun": 2, "3-5 tahun": 3, "Lebih dari 5 tahun": 4
 }
 
+@app.route('/', methods=['GET'])
+def health_check():
+    return jsonify({"status": "FineXa AI Server is running!"})
+
 @app.route('/predict-risk', methods=['POST'])
 def predict_risk():
     try:
         data = request.json
         answers = data.get('answers')  # Menerima array angka: [3, 3, 3, 2, 3]
         
-        # Langsung ambil angkanya dari array tanpa perlu diterjemahkan lewat teks
         angka_jawaban = [int(x) for x in answers]
         
         data_dict = {
@@ -43,15 +46,10 @@ def predict_risk():
         df_input = pd.DataFrame([data_dict])
         df_input = df_input[model_ml.feature_names_in_]
         
-        # Biarkan model ML `.pkl` yang sudah kita latih bekerja secara murni!
         hasil_prediksi = model_ml.predict(df_input)
         
         print(f"Input Skor: {angka_jawaban} -> Hasil Prediksi ML: {hasil_prediksi[0]}")
         return jsonify({"risk_profile": hasil_prediksi[0]})
-        
-    except Exception as e:
-        print("Error ML:", e)
-        return jsonify({"risk_profile": "Moderat", "error": str(e)})
         
     except Exception as e:
         print("Error ML:", e)
@@ -111,4 +109,5 @@ def generate_advice():
         })
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    port = int(os.environ.get('PORT', 5001))
+    app.run(host='0.0.0.0', port=port)
